@@ -1,0 +1,26 @@
+name: BibleManna Telegram music video
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Private Telegram chat_id, images and audios file IDs
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: biblemanna-video
+  cancel-in-progress: false
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install FFmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Render and return private videos
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          JOB_JSON: ${{ inputs.job }}
+        run: python3 render.py
