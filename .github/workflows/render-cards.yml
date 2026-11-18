@@ -47,7 +47,7 @@ jobs:
           LIST_TEXT: ${{ github.event.client_payload.list_text || github.event.inputs.list_text }}
           STYLE: ${{ github.event.client_payload.style || github.event.inputs.style }}
         run: |
-          printf '%s' "$LIST_TEXT" > list.txt
+          printf '%b' "$LIST_TEXT" > list.txt
           echo "STYLE=$STYLE" >> "$GITHUB_ENV"
       - name: Render cards
         run: |
