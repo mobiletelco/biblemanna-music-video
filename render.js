@@ -7,7 +7,7 @@ const path = require('path');
   const bg = process.argv[4];
   fs.mkdirSync(outDir, { recursive: true });
   const browser = await puppeteer.launch({
-    executablePath: '/usr/bin/google-chrome', headless: 'new',
+    executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new',
     args: ['--no-sandbox', '--disable-dev-shm-usage', '--font-render-hinting=none', '--force-color-profile=srgb']
   });
   const page = await browser.newPage();
