@@ -73,11 +73,12 @@ def detect_bg_color(image_path):
     return 'white' if avg > 180 else 'black'
 
 def send_video(chat, video):
+    # Sent as a document, not a video: byte-exact FULL HD delivery with no
+    # server-side recompression. MP4 documents still play inline in clients.
     boundary = 'bm-boundary-6019'
     head = (f'--{boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n{chat}\r\n'
-            f'--{boundary}\r\nContent-Disposition: form-data; name="supports_streaming"\r\n\r\ntrue\r\n'
-            f'--{boundary}\r\nContent-Disposition: form-data; name="video"; filename="{video.name}"\r\nContent-Type: video/mp4\r\n\r\n').encode()
-    req = urllib.request.Request('https://api.telegram.org/bot' + TOKEN + '/sendVideo',
+            f'--{boundary}\r\nContent-Disposition: form-data; name="document"; filename="{video.name}"\r\nContent-Type: video/mp4\r\n\r\n').encode()
+    req = urllib.request.Request('https://api.telegram.org/bot' + TOKEN + '/sendDocument',
         data=head + video.read_bytes() + f'\r\n--{boundary}--\r\n'.encode(),
         headers={'Content-Type': 'multipart/form-data; boundary=' + boundary})
     try:
@@ -105,22 +106,9 @@ def render(job, folder, out):
         audio = audio_paths[i % len(audio_paths)]
         audio_len = ffprobe_duration(audio)
         short = audio_len < VIDEO_DURATION
-        # One shared MP3 continues across images in VIDEO_DURATION segments:
-        # image 1 gets 0-30s, image 2 gets 30-60s, and so on; a partial final
-        # segment keeps trailing silence. Every image past the audio's end
-        # restarts the MP3 from its beginning (owner-confirmed 18 Nov 2026).
-        # An MP3 of 30s or less plays in full from its start on every image.
-        # Multiple MP3s keep per-image rotation from each track's own start.
-        offset = 0.0
-        if not short and len(audio_paths) == 1:
-            offset = float(i * VIDEO_DURATION)
-            if offset >= audio_len:
-                offset = 0.0
         stem = f'BibleManna-{i+1:02d}'
-        common_in = ['-loop', '1', '-i', str(image)]
-        if offset > 0:
-            common_in += ['-ss', f'{offset:.3f}']
-        common_in += ['-i', str(audio), '-t', str(VIDEO_DURATION), '-r', str(FPS)]
+        common_in = ['-loop', '1', '-i', str(image), '-i', str(audio),
+                     '-t', str(VIDEO_DURATION), '-r', str(FPS)]
         common_enc = ['-c:v', 'libx264', '-profile:v', 'baseline', '-preset', 'medium',
                       '-pix_fmt', 'yuv420p', '-b:v', '2000k',
                       '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
