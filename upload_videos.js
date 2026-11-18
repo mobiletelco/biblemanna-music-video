@@ -1,4 +1,4 @@
-// upload_videos.js <outDir> <style> <chatId>
+// upload_videos.js <outDir> <style> <chatId> [batchId]
 // POSTs rendered MP4s (post/ and story/ subdirs) to the Apps Script router
 // callback in chunks bounded by MEASURED ENCODED request size. Google's 50 MB
 // POST quota covers OUTBOUND UrlFetch only; incoming doPost bodies have no
@@ -11,7 +11,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const [outDir, style, chatId] = process.argv.slice(2);
+const [outDir, style, chatId, batchId] = process.argv.slice(2);
 const { CALLBACK_URL, CALLBACK_SECRET } = process.env;
 if (!CALLBACK_URL || !CALLBACK_SECRET) throw new Error('callback config missing');
 
@@ -37,7 +37,7 @@ const MAX_FILE_BYTES = 14 * 1024 * 1024; // single-video ceiling (~8 MB expected
   const flush = async (done) => {
     if (!chunk.length) return;
     idx++;
-    const payload = { callback_secret: CALLBACK_SECRET, kind: 'videos', style, chat_id: chatId,
+    const payload = { callback_secret: CALLBACK_SECRET, kind: 'videos', style, chat_id: chatId, batch_id: batchId || '',
                       count: chunk.length, done,
                       files: chunk.map(f => ({ name: f.name, fmt: f.fmt, b64: fs.readFileSync(f.path).toString('base64') })) };
     const body = JSON.stringify(payload);
