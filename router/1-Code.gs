@@ -11,7 +11,9 @@
  *   GITHUB_REPO     - e.g. mobiletelco/biblemanna-music-video
  *   CALLBACK_SECRET - random string, same value as the repo secret
  *   WEBHOOK_SECRET  - random string required as ?secret= on the webhook URL
- *   MODE            - OFF (render + Telegram reply only) or LIVE (Drive/sheet writes)
+ *   MODE            - OFF (no side effects), DEMO (narrow private demo: owner-only
+ *                       Telegram, render-cards dispatch only, demo-folder writes only),
+ *                       or LIVE (full production handlers)
  */
 
 const CFG = () => PropertiesService.getScriptProperties().getProperties();
@@ -161,7 +163,8 @@ function doPost(e) {
         demoSave_(body, p, spOff); // narrow demo path: demo folder only, no sharing, no sheet, no TG
       }
       if (body.done) tg_(p, 'sendMessage', { chat_id: body.chat_id,
-        text: 'OFF mode: received ' + (body.count || 0) + ' rendered file(s) from GitHub. Nothing uploaded.' });
+        text: (String(p.MODE) === 'DEMO' ? 'Demo: ' + (body.count || 0) + ' card(s) saved to the demo Output folder.' :
+          'OFF mode: received ' + (body.count || 0) + ' rendered file(s) from GitHub. Nothing uploaded.') });
       return ok_();
     }
     return body.kind === 'videos' ? handleVideosCallback_(body, p) : handleCardsCallback_(body, p);
@@ -190,19 +193,24 @@ function doPost(e) {
       const style = text.startsWith('/verse_cards') ? 'black' : 'white';
       const list = text.replace(/^\/\w+_cards\s*/, '').trim();
       if (!list) { tg_(p, 'sendMessage', { chat_id: chatId, text: 'Send the list text after the command.' }); return ok_(); }
-      markIntake_('accepted cmd=cards style=' + style + ' effects=' + (String(p.MODE) === 'LIVE' ? 'sent' : 'suppressed_OFF'));
+      markIntake_('accepted cmd=cards style=' + style + ' effects=' + (String(p.MODE) === 'OFF' ? 'suppressed_OFF' : 'sent'));
       dispatch_(p, 'render-cards', { style: style, list_text: list, chat_id: chatId });
       tg_(p, 'sendMessage', { chat_id: chatId, text: 'Rendering ' + style + ' cards on GitHub. Summary follows here.' });
     } else if (text.startsWith('/biblemanna_video')) {
-      markIntake_('accepted cmd=video_batch_open effects=' + (String(p.MODE) === 'LIVE' ? 'sent' : 'suppressed_OFF'));
+      if (String(p.MODE) === 'DEMO') {
+        markIntake_('accepted cmd=video_batch_open effects=blocked_DEMO');
+        tg_(p, 'sendMessage', { chat_id: chatId, text: 'Video rendering is not part of this demo yet.' });
+        return ok_();
+      }
+      markIntake_('accepted cmd=video_batch_open effects=' + (String(p.MODE) === 'OFF' ? 'suppressed_OFF' : 'sent'));
       PropertiesService.getScriptProperties().setProperty('VIDEO_BATCH',
         JSON.stringify({ images: [], audios: [], style: text.includes('white') ? 'white' : 'black', chat_id: chatId, ts: Date.now() }));
       tg_(p, 'sendMessage', { chat_id: chatId, text: 'Send images (as files) and MP3s, then /go. 1-10 each.' });
     } else if (text === '/go') {
-      markIntake_('accepted cmd=go effects=' + (String(p.MODE) === 'LIVE' ? 'sent' : 'suppressed_OFF'));
+      markIntake_('accepted cmd=go effects=' + (String(p.MODE) === 'OFF' ? 'suppressed_OFF' : 'sent'));
       closeVideoBatch_(p);
     } else if (docs.length) {
-      markIntake_('accepted cmd=document effects=' + (String(p.MODE) === 'LIVE' ? 'sent' : 'suppressed_OFF'));
+      markIntake_('accepted cmd=document effects=' + (String(p.MODE) === 'OFF' ? 'suppressed_OFF' : 'sent'));
       addToVideoBatch_(p, docs, chatId);
     } else {
       // Raw pasted list intake: Telegram caps messages at 4096 chars and clients reject
@@ -229,14 +237,14 @@ function doPost(e) {
           tg_(p, 'sendMessage', { chat_id: chatId, text: 'Could not read that list - a part may be missing or a line got split. Please send the whole list again, then send: done' });
           return ok_();
         }
-        markIntake_('accepted cmd=raw_close style=' + parsed.style + ' count=' + parsed.cards.length + ' effects=' + (String(p.MODE) === 'LIVE' ? 'sent' : 'suppressed_OFF'));
+        markIntake_('accepted cmd=raw_close style=' + parsed.style + ' count=' + parsed.cards.length + ' effects=' + (String(p.MODE) === 'OFF' ? 'suppressed_OFF' : 'sent'));
         dispatch_(p, 'render-cards', { style: parsed.style, list_text: cardsToListText_(parsed.cards), chat_id: chatId });
         tg_(p, 'sendMessage', { chat_id: chatId, text: 'Rendering ' + parsed.cards.length + ' ' + parsed.style + ' cards on GitHub. Summary follows here.' });
         return ok_();
       }
       if (batch || /^\s*\*\s+/m.test(text) || /^-\S/m.test(text)) {
         const m = rawAppend_(spRaw, text, chatId);
-        markIntake_('accepted cmd=raw_fragment n=' + m.parts + ' chars=' + m.chars + (expired ? ' expired_parts=' + expired.parts : '') + ' effects=' + (String(p.MODE) === 'LIVE' ? 'sent' : 'suppressed_OFF'));
+        markIntake_('accepted cmd=raw_fragment n=' + m.parts + ' chars=' + m.chars + (expired ? ' expired_parts=' + expired.parts : '') + ' effects=' + (String(p.MODE) === 'OFF' ? 'suppressed_OFF' : 'sent'));
         if (expiredNote) tg_(p, 'sendMessage', { chat_id: chatId, text: expiredNote });
         else if (m.parts === 1) tg_(p, 'sendMessage', { chat_id: chatId, text: 'Got part 1. Send the rest if any, then send: done' });
         return ok_();
@@ -290,7 +298,10 @@ function tick() {
 }
 
 function dispatch_(p, eventType, payload) {
-  if (String(p.MODE) !== 'LIVE') return; // hard OFF guard: no GitHub dispatch
+  const m = String(p.MODE);
+  if (m === 'OFF') return; // hard OFF guard: no GitHub dispatch
+  if (m === 'DEMO' && eventType !== 'render-cards') return; // DEMO: cards only, no video leg
+  if (m !== 'LIVE' && m !== 'DEMO') return;
   const res = UrlFetchApp.fetch('https://api.github.com/repos/' + p.GITHUB_REPO + '/dispatches', {
     method: 'post', contentType: 'application/json',
     headers: { Authorization: 'Bearer ' + p.GITHUB_TOKEN, Accept: 'application/vnd.github+json' },
@@ -381,10 +392,30 @@ function doneNameSet_() {
 }
 
 function tg_(p, method, payload) {
-  if (String(p.MODE) !== 'LIVE') return; // hard OFF guard: no Telegram side effects
+  const m = String(p.MODE);
+  if (m === 'OFF') return; // hard OFF guard: no Telegram side effects
+  if (m === 'DEMO' && String(payload.chat_id) !== String(p.OWNER_CHAT_ID)) return; // DEMO: owner-only
+  if (m !== 'LIVE' && m !== 'DEMO') return;
   UrlFetchApp.fetch('https://api.telegram.org/bot' + p.BOT_TOKEN + '/' + method, {
     method: 'post', contentType: 'application/json', payload: JSON.stringify(payload), muteHttpExceptions: true
   });
+}
+
+/* Editor-run, one-time setup: registers the NEW bot's webhook at this project's
+ * deployed /exec URL, gated by the webhook secret query param the router requires.
+ * Pending updates are NOT dropped (default), so anything the owner already sent the
+ * new bot is delivered once the webhook attaches. Never logs the token; outcome is
+ * verified through setupBot's BOT_WEBHOOK_STATE readout. */
+function registerWebhook() {
+  const p = CFG();
+  const execUrl = 'https://script.google.com/macros/s/AKfycbyx7-E-AXpZXrRXA1QW3gK-ThqwpbcnbPCz6LslyAvbkfZA6LbX_EMlCbWgFqz9vdO30Q/exec';
+  const res = UrlFetchApp.fetch('https://api.telegram.org/bot' + p.BOT_TOKEN + '/setWebhook', {
+    method: 'post', contentType: 'application/json',
+    payload: JSON.stringify({ url: execUrl + '?secret=' + p.WEBHOOK_SECRET, allowed_updates: ['message'] }),
+    muteHttpExceptions: true
+  });
+  PropertiesService.getScriptProperties().setProperty('BOT_REGISTER_AT',
+    new Date().toISOString() + ' http=' + res.getResponseCode());
 }
 
 /* HtmlService on purpose: ContentService text replies surface to Telegram as a
