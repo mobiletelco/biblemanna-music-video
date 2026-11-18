@@ -105,9 +105,22 @@ def render(job, folder, out):
         audio = audio_paths[i % len(audio_paths)]
         audio_len = ffprobe_duration(audio)
         short = audio_len < VIDEO_DURATION
+        # One shared MP3 continues across images in VIDEO_DURATION segments:
+        # image 1 gets 0-30s, image 2 gets 30-60s, and so on; a partial final
+        # segment keeps trailing silence. Every image past the audio's end
+        # restarts the MP3 from its beginning (owner-confirmed 18 Nov 2026).
+        # An MP3 of 30s or less plays in full from its start on every image.
+        # Multiple MP3s keep per-image rotation from each track's own start.
+        offset = 0.0
+        if not short and len(audio_paths) == 1:
+            offset = float(i * VIDEO_DURATION)
+            if offset >= audio_len:
+                offset = 0.0
         stem = f'BibleManna-{i+1:02d}'
-        common_in = ['-loop', '1', '-i', str(image), '-i', str(audio),
-                     '-t', str(VIDEO_DURATION), '-r', str(FPS)]
+        common_in = ['-loop', '1', '-i', str(image)]
+        if offset > 0:
+            common_in += ['-ss', f'{offset:.3f}']
+        common_in += ['-i', str(audio), '-t', str(VIDEO_DURATION), '-r', str(FPS)]
         common_enc = ['-c:v', 'libx264', '-profile:v', 'baseline', '-preset', 'medium',
                       '-pix_fmt', 'yuv420p', '-b:v', '2000k',
                       '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
