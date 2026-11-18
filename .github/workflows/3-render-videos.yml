@@ -36,4 +36,15 @@ jobs:
           CALLBACK_SECRET: ${{ secrets.CALLBACK_SECRET }}
           STYLE: ${{ fromJSON(github.event.client_payload.job || github.event.inputs.job).style || 'black' }}
           CHAT_ID: ${{ fromJSON(github.event.client_payload.job || github.event.inputs.job).chat_id }}
-        run: node upload_videos.js out-videos "$STYLE" "$CHAT_ID"
+          BATCH_ID: ${{ fromJSON(github.event.client_payload.job || github.event.inputs.job).batch_id }}
+        run: node upload_videos.js out-videos "$STYLE" "$CHAT_ID" "$BATCH_ID"
+      - name: Report render failure
+        if: failure()
+        env:
+          CALLBACK_URL: ${{ secrets.CALLBACK_URL }}
+          CALLBACK_SECRET: ${{ secrets.CALLBACK_SECRET }}
+          CHAT_ID: ${{ fromJSON(github.event.client_payload.job || github.event.inputs.job).chat_id }}
+          BATCH_ID: ${{ fromJSON(github.event.client_payload.job || github.event.inputs.job).batch_id }}
+        run: >
+          curl -sS -X POST "$CALLBACK_URL" -H 'Content-Type: application/json'
+          -d "{\"callback_secret\":\"$CALLBACK_SECRET\",\"kind\":\"videos\",\"chat_id\":$CHAT_ID,\"batch_id\":\"$BATCH_ID\",\"status\":\"failed\",\"count\":0,\"done\":true,\"files\":[]}"
