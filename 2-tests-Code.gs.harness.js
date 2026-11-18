@@ -296,5 +296,43 @@ check('ref without chapter:verse rejected', app.parseRawList_(' * body\n   not a
 check('merged body+attribution rejected', app.parseRawList_('Some quote body text here-GOD\n\nNext quote\n-LORD') === null);
 check('no secret leakage across raw-list tests', noSecretsLeaked());
 
+// 21. DEMO mode: narrow private demo - owner-only TG, render-cards dispatch only, demo folder only
+reset('DEMO'); app = load();
+store.DEMO_OUTPUT_FOLDER_ID = 'demofolder';
+app.doPost(post(tgUpdate(700, 111, frags[0]), { secret: 'whsec' }));
+check('DEMO fragment acked to owner, not dispatched', fetches.filter(f => f.url.includes('sendMessage')).length === 1 &&
+  fetches.filter(f => f.url.includes('api.github.com')).length === 0);
+app.doPost(post(tgUpdate(701, 111, frags[1]), { secret: 'whsec' }));
+app.doPost(post(tgUpdate(702, 111, frags[2]), { secret: 'whsec' }));
+app.doPost(post(tgUpdate(703, 111, 'done'), { secret: 'whsec' }));
+const ddisp = fetches.filter(f => f.url.includes('api.github.com'));
+check('DEMO close: one render-cards dispatch', ddisp.length === 1 && JSON.parse(ddisp[0].opts.payload).event_type === 'render-cards');
+check('DEMO close readout sent', (store.OFF_LAST_INTAKE || '').includes('cmd=raw_close style=black count=101 effects=sent'));
+app.doPost(post({ callback_secret: 'cbsec', kind: 'cards', style: 'black', chat_id: '111', count: 3, done: true, files: [
+  { name: 'c1.jpeg', caption: 'a', b64: Buffer.from('x').toString('base64') }
+] }));
+check('DEMO callback: demo folder write only', createdFiles.length === 1 && createdFiles[0].folderId === 'demofolder');
+check('DEMO callback: no sheet, no sharing', sheetCalls.length === 0 && sharingCalls.length === 0);
+check('DEMO callback: owner gets demo summary', fetches.some(f => f.url.includes('sendMessage') && f.opts.payload.includes('Demo: 3 card(s)')));
+
+// 22. DEMO blocks: non-owner intake, non-owner TG, video dispatch, video batch
+reset('DEMO'); app = load();
+app.doPost(post(tgUpdate(800, 999, frags[0]), { secret: 'whsec' }));
+check('DEMO non-owner rejected', (store.OFF_LAST_INTAKE || '').includes('rejected=non_owner') && fetches.length === 0);
+app.doPost(post(tgUpdate(801, 111, '/biblemanna_video'), { secret: 'whsec' }));
+check('DEMO video batch blocked with notice', (store.OFF_LAST_INTAKE || '').includes('blocked_DEMO') &&
+  fetches.filter(f => f.url.includes('api.github.com')).length === 0 && !store.VIDEO_BATCH &&
+  fetches.some(f => f.url.includes('sendMessage')));
+app.doPost(post(tgUpdate(802, 111, '/verse_cards body\nref 1:1'), { secret: 'whsec' }));
+check('DEMO slash cards allowed', fetches.filter(f => f.url.includes('api.github.com')).length === 1);
+check('DEMO no sheet/sharing/drive writes end to end', sheetCalls.length === 0 && sharingCalls.length === 0 && createdFiles.length === 0);
+
+// 23. OFF still fully suppresses after DEMO changes (regression)
+reset('OFF'); app = load();
+app.doPost(post(tgUpdate(900, 111, frags[0]), { secret: 'whsec' }));
+app.doPost(post(tgUpdate(901, 111, 'done'), { secret: 'whsec' }));
+check('OFF: still zero fetches for raw flow', fetches.length === 0);
+check('no secret leakage across DEMO tests', noSecretsLeaked());
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
