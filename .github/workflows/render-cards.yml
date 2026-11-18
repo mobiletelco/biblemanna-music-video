@@ -1,0 +1,60 @@
+name: BibleManna render cards
+on:
+  workflow_dispatch:
+    inputs:
+      style:
+        description: 'black (Verse) or white (Quotes)'
+        required: true
+      list_text:
+        description: 'Verse list text'
+        required: true
+      chat_id:
+        description: 'Telegram chat to report back to'
+        required: true
+  repository_dispatch:
+    types: [render-cards]
+permissions:
+  contents: read
+concurrency:
+  group: biblemanna-cards
+  cancel-in-progress: false
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CALLBACK_URL: ${{ secrets.CALLBACK_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Install Chrome
+        run: |
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq google-chrome-stable
+      - name: Install deps
+        run: npm init -y && npm install puppeteer-core
+      - name: Prepare input
+        env:
+          LIST_TEXT: ${{ github.event.client_payload.list_text || github.event.inputs.list_text }}
+          STYLE: ${{ github.event.client_payload.style || github.event.inputs.style }}
+        run: |
+          printf '%s' "$LIST_TEXT" > list.txt
+          echo "STYLE=$STYLE" >> "$GITHUB_ENV"
+      - name: Render cards
+        run: |
+          BG='#000000'; [ "$STYLE" = "white" ] && BG='#ffffff'
+          node render.js list.txt "out-$STYLE" "$BG"
+      - name: Upload rendered cards as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cards-${{ github.run_id }}
+          path: out-*/
+          retention-days: 3
+      - name: Callback with rendered cards
+        if: ${{ env.CALLBACK_URL != '' }}
+        env:
+          CALLBACK_SECRET: ${{ secrets.CALLBACK_SECRET }}
+          CHAT_ID: ${{ github.event.client_payload.chat_id || github.event.inputs.chat_id }}
+        run: node upload_cards.js "out-$STYLE" "$STYLE" "$CHAT_ID"
