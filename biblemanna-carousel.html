@@ -652,7 +652,8 @@ select:focus{outline:none;border-color:var(--ac)}
             </div>
 
             <!-- BRAND WORDS INFO (Bible Mode) -->
-            <div style="font-size:.42rem;color:#f59e0b;font-weight:700;margin-bottom:3px;margin-top:3px">✝ <span style="color:#FFE400">GOD · JESUS · CHRIST · LORD</span> + verse refs → auto yellow</div>          </div>
+            <div style="font-size:.42rem;color:#f59e0b;font-weight:700;margin-bottom:3px;margin-top:3px">✝ <span style="color:#FFE400">GOD · JESUS · CHRIST · LORD</span> + verse refs → auto yellow</div>
+          </div>
 
           <textarea id="specsText" rows="10"
             placeholder="First paragraph (will be Line 1 caption)&#10;&#10;Second paragraph onwards (will be Thread text)&#10;&#10;Example:&#10;OPPO Find X9 Ultra 😍&#10;&#10;📺 6.82&quot; 2K LTPO OLED display&#10;⚡ Snapdragon 8 Elite processor&#10;📸 200MP Sony main camera&#10;🔋 7050mAh battery"
@@ -1196,7 +1197,8 @@ select:focus{outline:none;border-color:var(--ac)}
   <details>
     <summary>🕓 Download History</summary>
     <div class="cb">
-      <div id="dlHistList" style="display:flex;flex-direction:column;gap:3px"></div>      <button class="btn brd bfull" style="margin-top:4px" onclick="clearDlHistory()">🗑 Clear Download History</button>
+      <div id="dlHistList" style="display:flex;flex-direction:column;gap:3px"></div>
+      <button class="btn brd bfull" style="margin-top:4px" onclick="clearDlHistory()">🗑 Clear Download History</button>
     </div>
   </details>
 
@@ -1705,7 +1707,8 @@ function makeLineHTML(d, n){
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px">
         <button onclick="getCurPS().c1='#FFE400';if($('c1'))$('c1').value='#FFE400';if($('c1picker'))$('c1picker').value='#FFE400';rdS()" style="flex:1;min-width:48px;background:#FFE400;color:#000;border:none;border-radius:5px;padding:7px 2px;font-size:.55rem;font-weight:800;cursor:pointer;touch-action:manipulation">🟡 Yellow</button>
         <button onclick="getCurPS().c1='#FF3B30';if($('c1'))$('c1').value='#FF3B30';if($('c1picker'))$('c1picker').value='#FF3B30';rdS()" style="flex:1;min-width:48px;background:#FF3B30;color:#fff;border:none;border-radius:5px;padding:7px 2px;font-size:.55rem;font-weight:800;cursor:pointer;touch-action:manipulation">🔴 Red</button>
-        <button onclick="getCurPS().c1='#22c55e';if($('c1'))$('c1').value='#22c55e';if($('c1picker'))$('c1picker').value='#22c55e';rdS()" style="flex:1;min-width:48px;background:#22c55e;color:#fff;border:none;border-radius:5px;padding:7px 2px;font-size:.55rem;font-weight:800;cursor:pointer;touch-action:manipulation">🟢 Green</button>        <button onclick="getCurPS().c1='#FF9500';if($('c1'))$('c1').value='#FF9500';if($('c1picker'))$('c1picker').value='#FF9500';rdS()" style="flex:1;min-width:48px;background:#FF9500;color:#fff;border:none;border-radius:5px;padding:7px 2px;font-size:.55rem;font-weight:800;cursor:pointer;touch-action:manipulation">🟠 Orange</button>
+        <button onclick="getCurPS().c1='#22c55e';if($('c1'))$('c1').value='#22c55e';if($('c1picker'))$('c1picker').value='#22c55e';rdS()" style="flex:1;min-width:48px;background:#22c55e;color:#fff;border:none;border-radius:5px;padding:7px 2px;font-size:.55rem;font-weight:800;cursor:pointer;touch-action:manipulation">🟢 Green</button>
+        <button onclick="getCurPS().c1='#FF9500';if($('c1'))$('c1').value='#FF9500';if($('c1picker'))$('c1picker').value='#FF9500';rdS()" style="flex:1;min-width:48px;background:#FF9500;color:#fff;border:none;border-radius:5px;padding:7px 2px;font-size:.55rem;font-weight:800;cursor:pointer;touch-action:manipulation">🟠 Orange</button>
         <button onclick="getCurPS().c1='#ffffff';if($('c1'))$('c1').value='#ffffff';if($('c1picker'))$('c1picker').value='#ffffff';rdS()" style="flex:1;min-width:48px;background:#ffffff;color:#000;border:1px solid #ccc;border-radius:5px;padding:7px 2px;font-size:.55rem;font-weight:800;cursor:pointer;touch-action:manipulation">⬜ White</button>
         <button onclick="getCurPS().c1='#111111';if($('c1'))$('c1').value='#111111';if($('c1picker'))$('c1picker').value='#111111';rdS()" style="flex:1;min-width:48px;background:#111111;color:#fff;border:1px solid #444;border-radius:5px;padding:7px 2px;font-size:.55rem;font-weight:800;cursor:pointer;touch-action:manipulation">⬛ Black</button>
       </div>
@@ -2556,7 +2559,8 @@ function applyCrop(){
   const imgAR=nW/nH, wrapAR=cW/cH;
   let rendW,rendH,offX,offY;
   if(imgAR>wrapAR){rendW=cW;rendH=cW/imgAR;offX=0;offY=(cH-rendH)/2;}
-  else{rendH=cH;rendW=cH*imgAR;offY=0;offX=(cW-rendW)/2;}  // Map crop box coords (in wrap space) → image pixel coords
+  else{rendH=cH;rendW=cH*imgAR;offY=0;offX=(cW-rendW)/2;}
+  // Map crop box coords (in wrap space) → image pixel coords
   const cbx=Math.max(0,_cropBox.x-offX),cby=Math.max(0,_cropBox.y-offY);
   const cbw=Math.min(_cropBox.w,rendW-cbx),cbh=Math.min(_cropBox.h,rendH-cby);
   const scaleX=nW/rendW,scaleY=nH/rendH;
@@ -3551,7 +3555,8 @@ function _bmMeasureSpecsTextH(ctx, W, ps, fs, lines){
 }
 
 function drawSpecsOverlay(ctx, W, H, ps){
-  // Strip card-break markers (---) — these are only for split preview, not rendered output  let rawText = (ps.specsText||'').trimEnd().replace(/^---$/gm,'').replace(/\n{3,}/g,'\n\n').trim();
+  // Strip card-break markers (---) — these are only for split preview, not rendered output
+  let rawText = (ps.specsText||'').trimEnd().replace(/^---$/gm,'').replace(/\n{3,}/g,'\n\n').trim();
   // Normalize verse references: Psalms 23-1 → Psalms 23:1
   rawText = normalizeVerseRefs(rawText);
   if(!rawText){
@@ -4602,7 +4607,8 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeLightbox(); 
 
 
 /* ── Preview specs overlay background full screen ── */
-function previewSpecsBg(){  const ps=getCurPS();
+function previewSpecsBg(){
+  const ps=getCurPS();
   // Priority: dedicated overlay img → specsImgIdx page → current page
   let img = ps.specsOverlayImg || null;
   if(!img){ const idx=ps.specsImgIdx||0; img=(pages[idx]&&pages[idx].img)||ps.img||null; }
@@ -5649,7 +5655,8 @@ async function dlAllCardsZip(){
     }
   }catch(e){
     // JSZip unavailable — fallback to individual downloads
-    if(dlBtn){ dlBtn.disabled=false; dlBtn.textContent='⬇ Download Thread'; }    return dlAllCards();
+    if(dlBtn){ dlBtn.disabled=false; dlBtn.textContent='⬇ Download Thread'; }
+    return dlAllCards();
   }
   const zip = new window.JSZip();
   for(let ci=0;ci<cards.length;ci++){
